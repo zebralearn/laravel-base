@@ -76,7 +76,12 @@ RUN set -eux; \
     fi; \
     done; \
     apk add --no-cache ${EXTRA_REPOS} ${INSTALL_PACKAGES} ${NPM_PKG}; \
-    npm install -g npm@latest; \
+    NODE_MAJOR="$(node -v | cut -d'.' -f1 | tr -d 'v')"; \
+    if [ "${NODE_MAJOR}" -lt 22 ]; then \
+        npm install -g npm@10; \
+    else \
+        npm install -g npm@latest; \
+    fi; \
     rm -rf /usr/lib/node_modules/npm /usr/bin/npm /usr/bin/npx; \
     ln -sf /usr/local/bin/npm /usr/bin/npm; \
     ln -sf /usr/local/bin/npx /usr/bin/npx; \

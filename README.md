@@ -180,7 +180,7 @@ make push-all
 
 This repository includes a production-grade automated vulnerability scanning workflow powered by **Aqua Security Trivy**:
 
-- **Trigger**: Runs automatically whenever a GitHub Release is published (`on.release.types: [published]`), and can be triggered on-demand via `workflow_dispatch`.
+- **Trigger**: Runs automatically whenever the **Build and Publish Docker image** release pipeline finishes (`on.workflow_run`), when a release is published directly (`on.release.types: [published]`), or on-demand via `workflow_dispatch`.
 - **Coverage**: Scans every supported PHP version matrix (`8.2`, `8.3`, `8.4`, `8.5`).
 - **SARIF Security Alerts**: Uploads detailed vulnerability reports to the repository's **GitHub Security Tab** (Code Scanning Alerts) with segregated categories per PHP version.
 - **Workflow Step Summary**: Prints an immediate ASCII summary table in the GitHub Actions run summary for instant visibility into CVEs and patch availability.

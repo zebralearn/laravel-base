@@ -1,106 +1,111 @@
 name: Docker Image Security Scan
 
 on:
-    release:
-        types: [published]
-    workflow_dispatch:
-        inputs:
-            severity:
-                description: "Vulnerability severity levels to report"
-                required: false
-                default: "CRITICAL,HIGH"
-                type: string
-            fail-build:
-                description: "Fail the job if vulnerabilities are detected"
-                required: false
-                default: false
-                type: boolean
+  workflow_run:
+    workflows: ["Build and Publish Docker image"]
+    types:
+      - completed
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      severity:
+        description: "Vulnerability severity levels to report"
+        required: false
+        default: "CRITICAL,HIGH"
+        type: string
+      fail-build:
+        description: "Fail the job if vulnerabilities are detected"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_sha || github.ref }}
+  cancel-in-progress: true
 
 permissions:
-    actions: read
-    contents: read
-    packages: read
-    security-events: write
+  actions: read
+  contents: read
+  packages: read
+  security-events: write
 
 jobs:
-    security-scan:
-        name: Scan PHP ${{ matrix.php-version }}
-        runs-on: ubuntu-latest
-        strategy:
-            fail-fast: false
-            matrix:
-                php-version: ["8.2", "8.3", "8.4", "8.5"]
+  security-scan:
+    name: Scan PHP ${{ matrix.php-version }}
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ["8.2", "8.3", "8.4", "8.5"]
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                  ref: ${{ github.event.release.tag_name || github.ref }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.event.release.tag_name || github.ref }}
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-            - name: Log in to GitHub Container Registry
-              uses: docker/login-action@v3
-              with:
-                  registry: ghcr.io
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-            # Build the image locally into Docker daemon using Buildx and reuse GHA layer cache
-            - name: Build Docker Image (PHP ${{ matrix.php-version }})
-              uses: docker/build-push-action@v6
-              with:
-                  context: .
-                  file: ./Dockerfile
-                  build-args: |
-                      PHP_VERSION=${{ matrix.php-version }}
-                  load: true
-                  tags: local/laravel-base:php${{ matrix.php-version }}
-                  cache-from: type=gha,scope=php-${{ matrix.php-version }}-amd64
+      # Build the image locally into Docker daemon using Buildx and reuse GHA layer cache
+      - name: Build Docker Image (PHP ${{ matrix.php-version }})
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          build-args: |
+            PHP_VERSION=${{ matrix.php-version }}
+          load: true
+          tags: local/laravel-base:php${{ matrix.php-version }}
+          cache-from: type=gha,scope=php-${{ matrix.php-version }}-amd64
 
-            # 1. Generate SARIF report for GitHub Advanced Security / Code Scanning
-            - name: Run Trivy Vulnerability Scanner (SARIF)
-              uses: aquasecurity/trivy-action@v0.36.0
-              with:
-                  image-ref: "local/laravel-base:php${{ matrix.php-version }}"
-                  format: "sarif"
-                  output: "trivy-results-php${{ matrix.php-version }}.sarif"
-                  severity: ${{ github.event.inputs.severity || 'CRITICAL,HIGH' }}
-                  vuln-type: "os,library"
+      # 1. Generate SARIF report for GitHub Advanced Security / Code Scanning
+      - name: Run Trivy Vulnerability Scanner (SARIF)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: "local/laravel-base:php${{ matrix.php-version }}"
+          format: "sarif"
+          output: "trivy-results-php${{ matrix.php-version }}.sarif"
+          severity: ${{ github.event.inputs.severity || 'CRITICAL,HIGH' }}
+          vuln-type: "os,library"
 
-            # 2. Upload SARIF report to GitHub Security Tab (with unique category per matrix PHP version)
-            - name: Upload SARIF to GitHub Security Tab
-              uses: github/codeql-action/upload-sarif@v4
-              if: always()
-              with:
-                  sarif_file: "trivy-results-php${{ matrix.php-version }}.sarif"
-                  category: "php-${{ matrix.php-version }}"
+      # 2. Upload SARIF report to GitHub Security Tab (with unique category per matrix PHP version)
+      - name: Upload SARIF to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: "trivy-results-php${{ matrix.php-version }}.sarif"
+          category: "php-${{ matrix.php-version }}"
 
-            # 3. Generate human-readable table report for terminal and Step Summary
-            - name: Run Trivy Vulnerability Scanner (Table Output)
-              uses: aquasecurity/trivy-action@v0.36.0
-              with:
-                  image-ref: "local/laravel-base:php${{ matrix.php-version }}"
-                  format: "table"
-                  output: "trivy-summary-php${{ matrix.php-version }}.txt"
-                  severity: ${{ github.event.inputs.severity || 'CRITICAL,HIGH' }}
-                  vuln-type: "os,library"
-                  exit-code: ${{ (github.event.inputs.fail-build == true || github.event.inputs.fail-build == 'true') && '1' || '0' }}
+      # 3. Generate human-readable table report for terminal and Step Summary
+      - name: Run Trivy Vulnerability Scanner (Table Output)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: "local/laravel-base:php${{ matrix.php-version }}"
+          format: "table"
+          output: "trivy-summary-php${{ matrix.php-version }}.txt"
+          severity: ${{ github.event.inputs.severity || 'CRITICAL,HIGH' }}
+          vuln-type: "os,library"
+          exit-code: ${{ (github.event.inputs.fail-build == true || github.event.inputs.fail-build == 'true') && '1' || '0' }}
 
-            # 4. Publish vulnerability summary to the GitHub Actions Job Summary
-            - name: Publish Scan Results to Job Summary
-              if: always()
-              run: |
-                  echo "## 🛡️ Trivy Security Scan — PHP ${{ matrix.php-version }}" >> $GITHUB_STEP_SUMMARY
-                  if [ -s "trivy-summary-php${{ matrix.php-version }}.txt" ]; then
-                    echo '```text' >> $GITHUB_STEP_SUMMARY
-                    cat "trivy-summary-php${{ matrix.php-version }}.txt" >> $GITHUB_STEP_SUMMARY
-                    echo '```' >> $GITHUB_STEP_SUMMARY
-                  else
-                    echo "✅ No vulnerabilities matching severity levels were detected." >> $GITHUB_STEP_SUMMARY
-                  fi
+      # 4. Publish vulnerability summary to the GitHub Actions Job Summary
+      - name: Publish Scan Results to Job Summary
+        if: always()
+        run: |
+          echo "## 🛡️ Trivy Security Scan — PHP ${{ matrix.php-version }}" >> $GITHUB_STEP_SUMMARY
+          if [ -s "trivy-summary-php${{ matrix.php-version }}.txt" ]; then
+            echo '```text' >> $GITHUB_STEP_SUMMARY
+            cat "trivy-summary-php${{ matrix.php-version }}.txt" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No vulnerabilities matching severity levels were detected." >> $GITHUB_STEP_SUMMARY
+          fi

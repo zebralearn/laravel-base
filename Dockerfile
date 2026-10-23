@@ -25,6 +25,7 @@ RUN set -eux; \
     nodejs \
     postgresql-client \
     mysql-client \
+    nginx supervisor git zip \
     ${PKG_PREFIX} \
     ${PKG_PREFIX}-fpm \
     ${PKG_PREFIX}-curl \

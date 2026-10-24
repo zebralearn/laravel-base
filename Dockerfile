@@ -17,8 +17,7 @@ RUN set -eux; \
     EXTRA_REPOS=""; \
     NPM_PKG="npm"; \
     if [ "${PHP_NUM}" = "82" ]; then \
-    EXTRA_REPOS="--repository=https://dl-cdn.alpinelinux.org/alpine/v3.20/main --repository=https://dl-cdn.alpinelinux.org/alpine/v3.20/community"; \
-    NPM_PKG="npm<11"; \
+    EXTRA_REPOS="--repository=https://dl-cdn.alpinelinux.org/alpine/v3.22/main --repository=https://dl-cdn.alpinelinux.org/alpine/v3.22/community"; \
     fi; \
     WANTED_PACKAGES=" \
     bash \
@@ -85,6 +84,8 @@ RUN set -eux; \
     rm -rf /usr/lib/node_modules/npm /usr/bin/npm /usr/bin/npx; \
     ln -sf /usr/local/bin/npm /usr/bin/npm; \
     ln -sf /usr/local/bin/npx /usr/bin/npx; \
+    npm cache clean --force 2>/dev/null || true; \
+    rm -rf /root/.npm; \
     if [ -f /etc/ImageMagick-7/policy.xml ]; then \
     sed -i 's#</policymap>#  <policy domain="coder" rights="none" pattern="{EPS,PDF,PS,XPS,MVG,MSL}" />\n</policymap>#' /etc/ImageMagick-7/policy.xml; \
     fi; \

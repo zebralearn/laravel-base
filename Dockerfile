@@ -29,12 +29,15 @@ RUN set -eux; \
     mysql-client \
     nginx supervisor git zip \
     ${PKG_PREFIX} \
+    ${PKG_PREFIX}-cli \
+    ${PKG_PREFIX}-common \
     ${PKG_PREFIX}-fpm \
     ${PKG_PREFIX}-curl \
     ${PKG_PREFIX}-mbstring \
     ${PKG_PREFIX}-mysqli \
     ${PKG_PREFIX}-pgsql \
     ${PKG_PREFIX}-pdo \
+    ${PKG_PREFIX}-pdo_sqlite \
     ${PKG_PREFIX}-pdo_mysql \
     ${PKG_PREFIX}-pdo_pgsql \
     ${PKG_PREFIX}-pcntl \
@@ -49,6 +52,9 @@ RUN set -eux; \
     ${PKG_PREFIX}-fileinfo \
     ${PKG_PREFIX}-phar \
     ${PKG_PREFIX}-iconv \
+    ${PKG_PREFIX}-openssl \
+    ${PKG_PREFIX}-json \
+    ${PKG_PREFIX}-session \
     ${PKG_PREFIX}-gd \
     ${PKG_PREFIX}-zip \
     ${PKG_PREFIX}-intl \

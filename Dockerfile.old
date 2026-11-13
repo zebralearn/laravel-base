@@ -1,6 +1,6 @@
 FROM --platform=${TARGETOS}/${TARGETARCH} cobiro/php:8.2-service-grpc AS cobiro_grpc
 
-FROM php:8.2-fpm-bookworm AS php
+FROM php:8.5-fpm-bookworm AS php
 ARG NODE_VERSION=20
 ARG POSTGRES_VERSION=16
 
